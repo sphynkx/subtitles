@@ -26,7 +26,7 @@ Finally you need the .json-file with creds. This file place somewhere, for examp
 require 'vendor/autoload.php';
 use Google\Cloud\Translate\V2\TranslateClient;
 
-$translate = new TranslateClient(['projectId' => 'subtitle-414118']);
+$translate = new TranslateClient(['projectId' => 'subtitle-123456']);
 
 $result = $translate->translate('Hello World', [
     'target' => 'ru'
