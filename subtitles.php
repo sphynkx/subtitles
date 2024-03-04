@@ -130,7 +130,7 @@ function getsubtitles($id)
     {
 // curl https://youtubetranscript.com/?server_vid2=bb4rAz7fz3I > bb4rAz7fz3I.txt
 //    return explode("</text>", file_get_contents($id.".txt")); 
-$translate = new TranslateClient(['projectId' => 'subtitle-414118']);
+$translate = new TranslateClient(['projectId' => 'subtitle-123456']);
 
 if (isset($_POST["translation"]))
     {
