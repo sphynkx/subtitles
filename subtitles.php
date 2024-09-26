@@ -130,17 +130,21 @@ function getsubtitles($id)
     {
 // curl https://youtubetranscript.com/?server_vid2=bb4rAz7fz3I > bb4rAz7fz3I.txt
 //    return explode("</text>", file_get_contents($id.".txt")); 
-$translate = new TranslateClient(['projectId' => 'subtitle-123456']);
+    $translate = new TranslateClient(['projectId' => 'subtitle-414118']);
 
-if (isset($_POST["translation"]))
-    {
-    $file = file_get_contents("https://youtubetranscript.com/?server_vid2=" . $id);
-    $translated = $translate->translate($file, ['target' => 'ru']);
-    return explode("</text>", $translated['text']);
-    }
+    $regex='/.*\{"captionTracks":\[\{"baseUrl":"(.*?)".*/';
+    $data = file_get_contents('https://www.youtube.com/watch?v=' . $id);
+    preg_match($regex, $data, $matches);
+    $file = file_get_contents(preg_replace('/\\\\u0026/', '&', $matches[1]));
+
+    if (isset($_POST["translation"]))
+	{
+	$translated = $translate->translate($file, ['target' => 'ru']);
+	return explode("</text>", $translated['text']);
+	}
     else
 	{
-	return explode("</text>", file_get_contents("https://youtubetranscript.com/?server_vid2=" . $id)); 
+	return explode("</text>", $file); 
 	}
     }
 
