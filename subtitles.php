@@ -64,8 +64,6 @@ function parseurl($url)
 
 function getmeta($id)
     {
-// curl https://www.youtube.com/watch?v=bb4rAz7fz3I >yt_bb4rAz7fz3I.txt
-//    return file_get_contents("yt_" . $id . ".txt");
     return file_get_contents("https://www.youtube.com/watch?v=" . $id);
     }
 
@@ -128,8 +126,6 @@ function sectostr($matches, $meta = false)
 
 function getsubtitles($id)
     {
-// curl https://youtubetranscript.com/?server_vid2=bb4rAz7fz3I > bb4rAz7fz3I.txt
-//    return explode("</text>", file_get_contents($id.".txt")); 
     $translate = new TranslateClient(['projectId' => 'subtitle-414118']);
 
     $regex='/.*\{"captionTracks":\[\{"baseUrl":"(.*?)".*/';
