@@ -163,6 +163,7 @@ function parsesubtitles($subtitles)
 
 
 ?>
+
 <script>
 document.querySelector("button").onclick = function(){
     document.querySelector("textarea").select();
