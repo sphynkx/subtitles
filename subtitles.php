@@ -26,8 +26,8 @@ if ($_POST)
 {
     $url = $_POST["yturl"];
     $id = parseurl($url);
-    $wikitext .= "<table border=0><tr><td valign='top'>\n".embedcode($id)."</td><td valign='top'>__TOC__</td></tr></table>\n";
-    $wikitext .= parsemeta( getmeta($id) );
+    $wikitext_before .= "<table border=0><tr><td valign='top'>\n".embedcode($id)."</td><td valign='top'>__TOC__</td></tr></table>\n";
+    $wikitext .= parsemeta( getmeta($id), $wikitext_before );
     $wikitext .= parsesubtitles( getsubtitles($id) ) . "\n<h3>Ссылки на эту страницу</h3>\n{{Special:WhatLinksHere/{{FULLPAGENAME}}}}\n";
     $wikilink  = $id ? '<a href="/index.php?title=Субтитры:' . $id . '&action=edit">': '<s><b>';
     $wikilink .= 'Ссылку на создание новой вики-страницы';
@@ -82,29 +82,49 @@ function embedcode($id)
     }
 
 
-function parsemeta($html)
+function parsemeta($html, $wikitext_before)
     {
     global $url, $id;
     $out='[[File:Youtube.png|24px|left|link=]] ';
+    $tpl_pict = 'https://i.ytimg.com/vi/' . $id . '/hqdefault.jpg';
 
     preg_match("/<meta name\=\"title\" content\=\"(.*?)\"/", $html, $title);
     $title[1] = preg_replace('/\]/', "&amp;#93;", $title[1]);##fix if title has brackets and they render by engine
     $out .= "<h3>[" . $url . $id . ' ' . $title[1] . "]</h3>\n";
+    $tpl_title = $title[1];
 
     preg_match("/<meta itemprop=\"datePublished\" content=\"(.*?)\">/", $html, $date);
     $out .= "\n" . format_date($date[1]) . "&nbsp;";
+    $tpl_date = format_date($date[1]);
+    $tpl_date = preg_replace('|<b>(.*?)</b>|', '$1', trim($tpl_date));
 
     preg_match("/Person\"><link itemprop=\"url\" href=\"(.*?)\"><link itemprop=\"name\" content=\"(.*?)\">/", $html, $channel);
     $out .= "[" . $channel[1] . " " . $channel[2] . "]\n\n";
+    $tpl_channel_url = $channel[1];
+    $tpl_channel_url = preg_replace('|http:|', 'https:', $tpl_channel_url); ## bug from Google =))
+    $tpl_channel_name = $channel[2];
 
     preg_match("/\"lengthSeconds\"\:\"(\d*?)\"/", $html, $dur);
     $out .= "Длительность: " . sectostr($dur[1], true) ." (" . $dur[1] . " сек.)\n";
+    $tpl_time = sectostr($dur[1], true);
 
     preg_match("/\"shortDescription\"\:\"(.*?)\"/", $html, $desc);
     $desc = preg_replace("/\\\\n/m", "<br>\n:", $desc[1]);
     $out .= "<div {{DivWrapOpts}}>[[Категория:WrapBlock]]\nОписание:\n<div class=\"mw-collapsible-content\">\n:".$desc."\n</div></div>\n<br>\n";
 
-    return $out;
+    $tpl = <<< EOL
+{{empty
+| pict = $tpl_pict
+| title = $tpl_title
+| channel_name = $tpl_channel_name
+| channel_url = $tpl_channel_url
+| date = $tpl_date
+| time = $tpl_time
+}}
+
+EOL;
+
+    return $tpl . $wikitext_before . $out;
     }
 
 
