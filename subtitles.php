@@ -99,9 +99,9 @@ function parsemeta($html, $wikitext_before)
     $tpl_date = preg_replace('|<b>(.*?)</b>|', '$1', trim($tpl_date));
 
     preg_match("/Person\"><link itemprop=\"url\" href=\"(.*?)\"><link itemprop=\"name\" content=\"(.*?)\">/", $html, $channel);
+    $channel[1] = preg_replace('|http:|', 'https:', $channel[1]); ## bug from Google =))
     $out .= "[" . $channel[1] . " " . $channel[2] . "]\n\n";
     $tpl_channel_url = $channel[1];
-    $tpl_channel_url = preg_replace('|http:|', 'https:', $tpl_channel_url); ## bug from Google =))
     $tpl_channel_name = $channel[2];
 
     preg_match("/\"lengthSeconds\"\:\"(\d*?)\"/", $html, $dur);
