@@ -17,7 +17,7 @@ echo <<<ENDE
 1. Вставьте адрес Youtube-видеоролика (в любом виде: обычном - <b>https://www.youtube.com/watch?v=bb4rAz7fz3I</b>, кратком - <b>https://youtu.be/bb4rAz7fz3I</b>, или просто как ID видеоролика - <b>bb4rAz7fz3I</b>) и нажмите на кнопку <b>"Генерировать"</b>:<br>
 <form method="post">
 $translation
-    <input type "text" name="yturl" size=50>
+    <input type="text" name="yturl" size=50>
     <input type="submit" value="Генерировать" />
 </form>
 ENDE;
@@ -36,8 +36,6 @@ if ($_POST)
 	    {
 	    echo "<h3>К сожалению, данное видео не содержит встроенных субтитров. Попробуйте другое видео.</h3><br>";
 	    if (! isset($_GET["form"]) ) exit(1);//force show textarea contents without correct subtitles - add to URL ?form
-
-///	    exit(1);
 	    }
     if($id !== '') 
 	{
@@ -144,7 +142,8 @@ function sectostr($matches, $meta = false)
     }
 
 
-function getsubtitles($id)
+// Got broken due to changes subtitles system on the YouTube side..
+function getsubtitles_OLD($id)
     {
     $translate = new TranslateClient(['projectId' => 'subtitle-414118']);
 
@@ -165,6 +164,84 @@ function getsubtitles($id)
     }
 
 
+// New version based on `youtube-dl` utility, fully imitate old version (refarmat/adapt  vtt to google's TTML)
+function getsubtitles($id)
+{
+    $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
+    $lang = 'ru';
+    $tmp = "/tmp/{$id}";
+    $videoUrl = escapeshellarg("https://www.youtube.com/watch?v={$id}");
+
+    $cmd = "./bin/youtube-dl --cache-dir /tmp --user-agent " . escapeshellarg($userAgent) .
+        " --skip-download --write-sub --sub-lang $lang $videoUrl -o $tmp 2>/dev/null";
+    shell_exec($cmd);
+
+    $subfile = "{$tmp}.{$lang}.vtt";
+    if (!file_exists($subfile)) {
+        return ["<transcript>transcripts disabled for that video</transcript>"];
+    }
+
+    $content = file_get_contents($subfile);
+    @unlink($subfile);
+
+    if (!$content) {
+        return ["<transcript>transcripts disabled for that video</transcript>"];
+    }
+
+    // VTT -> <transcript><text start="...">...</text>...</transcript>
+    $lines = explode("\n", $content);
+    $subs_xml = [];
+    $in_block = false;
+    $start_time = "";
+    $text = "";
+    foreach ($lines as $line) {
+        $line = trim($line);
+        // Pass misc headers and system strings..
+        if ($line === "" || $line === "WEBVTT" || strpos($line, "Kind:") === 0 || strpos($line, "Language:") === 0) {
+            continue;
+        }
+        // VTT time-mark
+        if (preg_match('/^(\d{2}:\d{2}:\d{2})(?:\.(\d{3}))? -->/', $line, $m)) {
+            // If there has contained text from previous block, then finish it.
+            if ($in_block && $text !== "") {
+                $start_secs = vtt_time_to_seconds($start_time);
+                $subs_xml[] = '<text start="' . $start_secs . '">' . htmlspecialchars($text, ENT_QUOTES | ENT_XML1) . '</text>';
+                $text = "";
+            }
+            $start_time = $m[1] . (isset($m[2]) ? '.' . $m[2] : '.000');
+            $in_block = true;
+            continue;
+        }
+        // Any string(s) is the subtitles text.
+        if ($in_block) {
+            $text .= ($text ? " " : "") . $line;
+        }
+    }
+    // Last block
+    if ($in_block && $text !== "") {
+        $start_secs = vtt_time_to_seconds($start_time);
+        $subs_xml[] = '<text start="' . $start_secs . '">' . htmlspecialchars($text, ENT_QUOTES | ENT_XML1) . '</text>';
+    }
+    // Add <transcript>...</transcript> for compability with rest code
+    $xml = "<transcript>\n" . implode("\n", $subs_xml) . "\n</transcript>";
+
+    if (isset($_POST["translation"])) {
+        $translate = new TranslateClient(['projectId' => 'subtitle-414118']);
+        $translated = $translate->translate($xml, ['target' => 'ru']);
+        $xml = $translated['text'];
+    }
+
+    return explode("</text>", $xml);
+}
+
+// Coverts VTT-time (like "00:01:23.456") to sec with msec
+function vtt_time_to_seconds($t) {
+    // t = "HH:MM:SS.mmm"
+    if (!preg_match('/^(\d{2}):(\d{2}):(\d{2})\.(\d{3})$/', $t, $m)) return 0;
+    return intval($m[1]) * 3600 + intval($m[2]) * 60 + intval($m[3]) + floatval('0.' . $m[4]);
+}
+
+
 function parsesubtitles($subtitles)
     {
     $parsed = array('<div class="toccolours mw-collapsible" style="width:8000px; display: table-cell; margin: 0.5em 0 0 2em">[[Категория:WrapBlock]][[Категория:Субтитры]]', "\nСубтитры:\n", '<div class="mw-collapsible-content">', "\n<table  width='100%'>\n");
@@ -180,7 +257,6 @@ function parsesubtitles($subtitles)
     $out = implode($parsed) . "</table>\n</div></div>\n";
     return $out;
     }
-
 
 ?>
 
